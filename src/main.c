@@ -21,12 +21,20 @@ typedef struct can2040 CANHandle;
 typedef struct can2040_msg CANMsg;
 
 static CANHandle cbus;
+bool flag = 0;
 
-static void
-can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
+static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
     // Add message processing code here...
     printf("rev CAN\n");
+    if (notify & CAN2040_NOTIFY_TX) {
+        printf("CANTX\n");
+        return;
+    }
+    if (notify & CAN2040_NOTIFY_RX){
+        printf("CANRX\n");
+        flag = 1;
+    }
 }
 
 static void
@@ -69,7 +77,7 @@ int main(){
     while (true) {
         CANMsg msg = {0};
         msg.dlc = 8;
-        msg.id = 0x202;
+        msg.id = 0x303;
         msg.data[0] = 0xDE;
         msg.data[1] = 0xAD;
         msg.data[2] = 0xBE;
@@ -82,7 +90,14 @@ int main(){
         if(can2040_check_transmit(&cbus)){
             int res = can2040_transmit(&cbus, &msg);
             printf("Returned: %d\n", res);
-        }  
+        }
+        if (flag){
+            for(int i=0; i<8; i++){
+                printf("%X ", cbus.parse_msg.data[i]);
+            }
+            printf("\n");
+            flag = 0;
+        }
         sleep_ms(500);
     }
 }
