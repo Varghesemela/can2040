@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <pico/stdlib.h>
 #include <pico/multicore.h>
 #include <hardware/pio.h>
@@ -15,25 +16,30 @@
 #include <hardware/regs/intctrl.h>
 
 #include "can2040.h"
-
+#define CANMSG_DATA_LEN(msg) ((msg)->dlc > 8 ? 8 : (msg)->dlc)
 
 typedef struct can2040 CANHandle;
 typedef struct can2040_msg CANMsg;
 
 static CANHandle cbus;
 bool flag = 0;
+uint8_t data_len = 0;
+uint8_t rbuf[8];
 
-static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
+static void can2040_cb(CANHandle *cd, uint32_t notify, CANMsg *msg)
 {
     // Add message processing code here...
-    printf("rev CAN\n");
     if (notify & CAN2040_NOTIFY_TX) {
         printf("CANTX\n");
         return;
     }
     if (notify & CAN2040_NOTIFY_RX){
         printf("CANRX\n");
-        flag = 1;
+        if((msg->id == 0x202) || (msg->id == 0x036)){
+            data_len = CANMSG_DATA_LEN(msg);
+            memcpy(rbuf, msg->data, data_len);
+            flag = 1;
+        }
     }
 }
 
@@ -75,25 +81,25 @@ int main(){
 
     sleep_ms(1000);
     while (true) {
-        CANMsg msg = {0};
-        msg.dlc = 8;
-        msg.id = 0x303;
-        msg.data[0] = 0xDE;
-        msg.data[1] = 0xAD;
-        msg.data[2] = 0xBE;
-        msg.data[3] = 0xEF;
-        msg.data[4] = 0xDE;
-        msg.data[5] = 0xAD;
-        msg.data[6] = 0xBE;
-        msg.data[7] = 0xEF;
+        CANMsg txmsg = {0};
+        txmsg.dlc = 8;
+        txmsg.id = 0x303;
+        txmsg.data[0] = 0xDE;
+        txmsg.data[1] = 0xAD;
+        txmsg.data[2] = 0xBE;
+        txmsg.data[3] = 0xEF;
+        txmsg.data[4] = 0xDE;
+        txmsg.data[5] = 0xAD;
+        txmsg.data[6] = 0xBE;
+        txmsg.data[7] = 0xEF;
         
-        if(can2040_check_transmit(&cbus)){
-            int res = can2040_transmit(&cbus, &msg);
-            printf("Returned: %d\n", res);
-        }
+        // if(can2040_check_transmit(&cbus)){
+        //     int res = can2040_transmit(&cbus, &txmsg);
+        //     printf("Returned: %d\n", res);
+        // }
         if (flag){
             for(int i=0; i<8; i++){
-                printf("%X ", cbus.parse_msg.data[i]);
+                printf("%X ", rbuf[i]);
             }
             printf("\n");
             flag = 0;
