@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "uart.h": "c",
+        "core_cm0plus.h": "c",
+        "rp2040.h": "c"
+    }
+}
