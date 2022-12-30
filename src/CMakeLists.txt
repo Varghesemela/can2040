@@ -1,7 +1,6 @@
 
 add_executable(${PROJECT_NAME} main.c can2040.c can2040.h)
 
-
 # target_link_libraries(${PROJECT_NAME} PUBLIC
 #     cmsis_core
 #     pico_stdlib
