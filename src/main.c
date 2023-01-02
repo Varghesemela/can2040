@@ -93,15 +93,7 @@ int main(){
     sleep_ms(1000);
     while (true) {
         CANMsg msg = {0};
-        msg.dlc = 8;
-        msg.data[0] = 0xDE;
-        msg.data[1] = 0xAD;
-        msg.data[2] = 0xBE;
-        msg.data[3] = 0xEF;
-        msg.data[4] = 0xDE;
-        msg.data[5] = 0xAD;
-        msg.data[6] = 0xBE;
-        msg.data[7] = 0xEF;
+        
         
         if(cb_called){
             switch (cb_notify) {
@@ -109,13 +101,34 @@ int main(){
             case CAN2040_NOTIFY_RX:
                 printf("cb: received msg: %s\n", msg_to_str(&rx_msg));
                 if(rx_msg.id & CAN2040_ID_RTR){
-                    msg.id = 0x203;
-                    if(can2040_check_transmit(&cbus)){
-                        int res = can2040_transmit(&cbus, &msg);
-                        printf("ack request for %X\n", msg.id);
-                    }  
-                    else{
-                        printf("bus busy\n");
+                    printf("rtr request \n", rx_msg.data[0]);
+                    if(rx_msg.id == 0x202){
+                        printf("%X \n", rx_msg.data[0]);
+                        switch(rx_msg.data[0]){
+                            case 0x01:
+                                msg.data[0] = 0xAA;
+                                msg.data[1] = 0xBB;
+                                msg.data[2] = 0xCC;
+                                msg.data[3] = 0xDD;
+                            break;
+                            case 0x02:
+                                msg.data[0] = 0xEE;
+                                msg.data[1] = 0xFF;
+                                msg.data[2] = 0xFF;
+                                msg.data[3] = 0xFF;
+                            break;
+                        }
+                        msg.id = 0x202;
+                        msg.dlc = 4;
+                        if(can2040_check_transmit(&cbus)){
+                            int res = can2040_transmit(&cbus, &msg);
+                            printf("ack request for %X\n success: %d", msg.id, res);
+                        }  
+                        else{
+                            printf("bus busy\n");
+                        }
+                        break;
+                        
                     }
                 }
                 break;
@@ -139,7 +152,16 @@ int main(){
         
         uint8_t command = getchar_timeout_us(0);
         if(command == 'u' || command == 'U'){
-            msg.id = 0x202 | CAN2040_ID_RTR;
+            uint8_t sub_command = getchar_timeout_us(0);
+            if(sub_command == '1'){
+                msg.data[0] = 0x01;
+            }
+                
+            else if(command == '2'){
+                msg.data[0] = 0x02;
+            }
+            msg.id = 0x203 | CAN2040_ID_RTR;
+            msg.dlc = 4;
             if(can2040_check_transmit(&cbus)){
                 int res = can2040_transmit(&cbus, &msg);
                 if (res) printf("Sent request on %X\n", msg.id);
